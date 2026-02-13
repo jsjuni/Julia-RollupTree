@@ -71,3 +71,32 @@ end
     )
     @test isequal(result3, wbs_table)
 end
+
+@testitem "test df_get_keys() and df_get_ids()" setup = [Setup] begin
+    expected = ["top", "1", "2", "3", "1.1", "1.2", "2.1", "2.2", "3.1", "3.2"]
+    @test isequal(RollupTree.df_get_keys(wbs_table, :id), expected)
+    @test isequal(RollupTree.df_get_ids(wbs_table), expected)
+end
+
+@testitem "test df_get_row_by_key() and df_get_row_by_id()" setup = [Setup] begin
+    expected = (id = "1.1", pid = "1", name = "Electrical", work = 11.8, budget = 25000)
+    @test isequal(RollupTree.df_get_row_by_key(wbs_table, :id, "1.1"), expected)
+    @test isequal(RollupTree.df_get_row_by_id(wbs_table, "1.1"), expected)
+end
+
+@testitem "test df_get_by_key() and df_get_by_id()" setup = [Setup] begin
+  @test RollupTree.df_get_by_key(wbs_table, :id, "1.1", :work) == 11.8
+  @test RollupTree.df_get_by_key(wbs_table, :id, "1.1", :budget) == 25000
+  @test RollupTree.df_get_by_id(wbs_table, "1.1", :work) == 11.8
+  @test RollupTree.df_get_by_id(wbs_table, "1.1", :budget) == 25000
+end
+
+@testitem "test df_set_row_by_key() and df_set_row_by_id()" setup = [Setup] begin
+  expected = (id = "1.1", pid = "2", name = "Thermal", work = 11.9, budget = 25001)
+  shuffled = expected[(:pid, :name, :id, :budget, :work)]
+  result1 = RollupTree.df_set_row_by_key(wbs_table, :id, "1.1", shuffled)
+  @test isequal(result1[findfirst(result1[!, :id] .== "1.1"), :], expected)
+
+  result2 = RollupTree.df_set_row_by_id(wbs_table, "1.1", shuffled)
+  @test isequal(result2[findfirst(result2[!, :id] .== "1.1"), :], expected)
+end
