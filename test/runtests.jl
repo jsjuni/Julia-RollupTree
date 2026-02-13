@@ -60,5 +60,13 @@ using Graphs
         )
         @test isequal(result2, expected2)
 
+      result3 = RollupTree.update_prop(
+            wbs_table, "1.1", [],
+            (d, k, v) -> begin d[findfirst(d[!, :id] .== k), :work] = v; d end,
+            (d, k) -> d[findfirst(d[!, :id] .== k), :work],
+            (av) -> reduce(+, av),
+            (ds, target, v) -> v
+        )
+        @test isequal(result3, wbs_table)
     end
 end
