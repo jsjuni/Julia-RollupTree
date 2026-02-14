@@ -2,6 +2,7 @@ module RollupTree
 
 using DataFrames
 using Graphs
+using MetaGraphsNext
 
 # Write your package code here.
 
@@ -9,9 +10,22 @@ using Graphs
         table
     end
 
-    update_prop(ds, target, sources, set, get, combine = (av) -> sum(av), override = (ds, target, v) -> v) = begin
+    validate_dag(graph) = begin
+        if !is_directed_acyclic_graph(graph)
+            error("The provided graph is not a directed acyclic graph.")
+        end
+    end
+
+    validate_tree(graph) = begin
+        validate_dag(graph)
+        if !is_tree(graph)
+            error("The provided graph is not a tree.")
+        end
+    end
+
+    update_prop(ds, target, sources, set, get, combine = (av) -> reduce(+, av), override = (ds, target, v) -> v) = begin
         if length(sources) > 0
-            av = map(s -> get(ds,s), sources)
+            av = map(s -> get(ds, s), sources)
             return set(ds, target, override(ds, target, combine(av)))
         else
             return ds
@@ -66,4 +80,12 @@ using Graphs
     
     df_set_row_by_id(df, idval, new_row) = df_set_row_by_key(df, :id, idval, new_row)
 
+    update_df_prop_by_key(df, key, target, sources, prop, combine = av -> reduce(+, av), override = (ds, target, v) -> v) = begin
+        update_prop(df, target, sources, (d, k, v) -> df_set_by_key(d, key, k, prop, v), (d, k) -> df_get_by_key(d, key, k, prop), combine, override)
+    end
+
+    update_df_prop_by_id(df, target, sources, prop, combine = av -> reduce(+, av), override = (ds, target, v) -> v) = begin
+        update_df_prop_by_key(df, :id, target, sources, prop, combine, override)
+    end
+    
 end

@@ -5,6 +5,7 @@ using TestItems
     using RollupTree
     using DataFrames
     using Graphs
+    using MetaGraphsNext
  
     wbs_table = DataFrame(
         id = ["top", "1", "2", "3", "1.1", "1.2", "2.1", "2.2", "3.1", "3.2"],
@@ -25,12 +26,14 @@ using TestItems
     wbs_table_rollup[wbs_table[!, :id] .== "3", :budget] .= 83500
     wbs_table_rollup[wbs_table[!, :id] .== "top", :budget] .= 215500
 
-    wbs_tree = Graphs.SimpleDiGraph(nrow(wbs_table))
-    for row in eachrow(wbs_table)
-        if !ismissing(row.pid)
-            parent_idx = findfirst(wbs_table[!, :id] .== row.pid)
-            child_idx = findfirst(wbs_table[!, :id] .== row.id)
-            add_edge!(wbs_tree, child_idx, parent_idx)
+    wbs_tree = MetaGraphsNext.MetaGraph(Graphs.SimpleDiGraph(), label_type = String)
+    for i in 1:nrow(wbs_table)
+        id = wbs_table[i, :id]
+        pid = wbs_table[i, :pid]
+        if !ismissing(pid)
+            add_edge!(wbs_tree, pid, id)
+        else
+            add_vertex!(wbs_tree, id)
         end
     end
 end
@@ -113,4 +116,14 @@ end
   result3 = RollupTree.df_set_by_id(wbs_table, "1.1", :work, 11.9)
   result4 = RollupTree.df_set_by_id(result3, "1.1", :budget, 25001)
   @test isequal(result4, expected)
+end
+
+@testitem "update_df_prop_by_key() and update_df_prop_by_id()" setup = [Setup] begin
+    expected = deepcopy(wbs_table)
+    expected[findfirst(expected[!, :id] .== "1"), :work] = 11.8 + 33.8
+    result1 = RollupTree.update_df_prop_by_key(wbs_table, :id, "1", ["1.1", "1.2"], :work)
+    @test isequal(result1, expected)
+
+    result2 = RollupTree.update_df_prop_by_id(wbs_table, "1", ["1.1", "1.2"], :work)
+    @test isequal(result2, expected)
 end
