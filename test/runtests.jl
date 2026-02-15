@@ -38,7 +38,7 @@ using TestItems
     end
 end
 
-@testitem "test rollup()" setup = [Setup] begin
+@testitem "rollup()" setup = [Setup] begin
     result = RollupTree.rollup(
         wbs_tree,
         wbs_table,
@@ -60,7 +60,44 @@ end
    @test isequal(wbs_table_rollup, result)
 end
 
-@testitem "test update_prop()" setup = [Setup] begin
+@testitem "vertices_above()" setup = [Setup] begin
+    expected1 = []
+    @test isequal(RollupTree.vertices_above(wbs_tree, "top"), expected1)
+
+    expected2 = ["top"]
+    @test isequal(RollupTree.vertices_above(wbs_tree, "1"), expected2)
+
+    expected3 = ["1", "top"]
+    @test isequal(RollupTree.vertices_above(wbs_tree, "1.1"), expected3)
+end
+
+@testitem "update_rollup()" setup = [Setup] begin
+    input = deepcopy(wbs_table_rollup)
+    input[findfirst(input[!, :id] .== "3.2"), :budget] = 22000
+    input[findfirst(input[!, :id] .== "2.2"), :work] = missing
+    expected = deepcopy(wbs_table_rollup)
+    expected[findfirst(input[!, :id] .== "3.2"), :budget] = 22000
+    expected[findfirst(input[!, :id] .== "2.2"), :work] = missing
+    expected[findfirst(expected[!, :id] .== "3"), :budget] = 62000 + 22000
+    expected[findfirst(expected[!, :id] .== "2"), :work] = 18.2 + 5.8
+    expected[findfirst(expected[!, :id] .== "top"), :budget] = 25000 + 61000 + 37000 + 9000 + 62000 + 22000
+    expected[findfirst(expected[!, :id] .== "top"), :work] = 11.8 + 33.8 + 18.2 + 5.8 + 16.2 + 14.2
+    result = RollupTree.update_rollup(
+        wbs_tree, input, "3.2",
+        (d, v, s) -> begin
+            idx = findfirst(d[!, :id] .== v)
+            if isnothing(idx)
+                error("Vertex ID not found in DataFrame")
+            end
+            d[idx, :work] = sum(d[in(s).(d.id), :work])
+            d[idx, :budget] = sum(d[in(s).(d.id), :budget])
+            d
+        end
+    )
+    @test isequal(result, expected)
+end
+
+@testitem "update_prop()" setup = [Setup] begin
     expected1 = deepcopy(wbs_table)
     expected1[findfirst(expected1[!, :id] .== "1"), :work] = 11.8 + 33.8
     result1 = RollupTree.update_prop(
@@ -93,26 +130,26 @@ end
     @test isequal(result3, wbs_table)
 end
 
-@testitem "test df_get_keys() and df_get_ids()" setup = [Setup] begin
+@testitem "df_get_keys() and df_get_ids()" setup = [Setup] begin
     expected = ["top", "1", "2", "3", "1.1", "1.2", "2.1", "2.2", "3.1", "3.2"]
     @test isequal(RollupTree.df_get_keys(wbs_table, :id), expected)
     @test isequal(RollupTree.df_get_ids(wbs_table), expected)
 end
 
-@testitem "test df_get_row_by_key() and df_get_row_by_id()" setup = [Setup] begin
+@testitem "df_get_row_by_key() and df_get_row_by_id()" setup = [Setup] begin
     expected = (id = "1.1", pid = "1", name = "Electrical", work = 11.8, budget = 25000)
     @test isequal(RollupTree.df_get_row_by_key(wbs_table, :id, "1.1"), expected)
     @test isequal(RollupTree.df_get_row_by_id(wbs_table, "1.1"), expected)
 end
 
-@testitem "test df_get_by_key() and df_get_by_id()" setup = [Setup] begin
+@testitem "df_get_by_key() and df_get_by_id()" setup = [Setup] begin
   @test RollupTree.df_get_by_key(wbs_table, :id, "1.1", :work) == 11.8
   @test RollupTree.df_get_by_key(wbs_table, :id, "1.1", :budget) == 25000
   @test RollupTree.df_get_by_id(wbs_table, "1.1", :work) == 11.8
   @test RollupTree.df_get_by_id(wbs_table, "1.1", :budget) == 25000
 end
 
-@testitem "test df_set_row_by_key() and df_set_row_by_id()" setup = [Setup] begin
+@testitem "df_set_row_by_key() and df_set_row_by_id()" setup = [Setup] begin
   expected = (id = "1.1", pid = "2", name = "Thermal", work = 11.9, budget = 25001)
   shuffled = expected[(:pid, :name, :id, :budget, :work)]
   result1 = RollupTree.df_set_row_by_key(wbs_table, :id, "1.1", shuffled)
@@ -122,7 +159,7 @@ end
   @test isequal(result2[findfirst(result2[!, :id] .== "1.1"), :], expected)
 end
 
-@testitem "test df_set_by_key() and df_set_by_id()" setup = [Setup] begin
+@testitem "df_set_by_key() and df_set_by_id()" setup = [Setup] begin
   expected = deepcopy(wbs_table)
   expected[findfirst(expected[!, :id] .== "1.1"), :work] = 11.9
   expected[findfirst(expected[!, :id] .== "1.1"), :budget] = 25001

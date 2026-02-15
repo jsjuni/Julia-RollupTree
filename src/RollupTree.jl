@@ -16,6 +16,30 @@ using MetaGraphsNext
         )
     end
 
+    # Don't export this.
+
+    vertices_above(tree, vertex, alist = []) = begin
+        push!(alist, vertex)
+        p = collect(outneighbor_labels(tree, vertex))
+        if length(p) == 0
+            popfirst!(alist)
+            return alist
+        else
+            return vertices_above(tree, p[1], alist)
+        end
+    end
+    
+    update_rollup(tree, ds, vertex, update) = begin
+        if outdegree(tree, code_for(tree, vertex)) == 0
+            error("update_rollup should only be called on leaf vertices.")
+        end
+       foldl(
+            (s, v) -> update(s, v, inneighbor_labels(tree, v)),
+            vertices_above(tree, vertex),
+            init = ds
+        )
+    end
+
     validate_dag(graph) = begin
         if !is_directed(graph)
             error("The provided graph is not directed.")
