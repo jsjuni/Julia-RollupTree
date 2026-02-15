@@ -1,10 +1,8 @@
 module RollupTree
 
-using DataFrames
-using Graphs
-using MetaGraphsNext
-
-# Write your package code here.
+    using DataFrames
+    using Graphs
+    using MetaGraphsNext
 
     rollup(tree, ds, update, validate_ds, validate_tree = validate_tree) = begin
         validate_tree(tree)
