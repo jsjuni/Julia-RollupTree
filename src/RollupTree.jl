@@ -34,6 +34,21 @@ module RollupTree
         )
     end
 
+    validate_ds(tree, ds, get_keys, get_prop, op = x -> isa(x, Number)) = begin
+        ids_in_tree = Set(labels(tree))
+        ids_in_ds = Set(get_keys(ds))
+        if ids_in_tree != ids_in_ds
+            error("The set of IDs in the DataFrame does not match the set of vertex labels in the graph.")
+        end
+        for id in filter(id -> indegree(tree, code_for(tree, id)) == 0, ids_in_tree)
+            value = get_prop(ds, id)
+            if !op(value)
+                error("Invalid value for ID $id: $value")
+            end
+        end
+        return true
+    end
+
     validate_dag(graph) = begin
         if !is_directed(graph)
             error("The provided graph is not directed.")

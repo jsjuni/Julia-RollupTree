@@ -172,6 +172,24 @@ end
     @test isequal(result2, expected)
 end
 
+@testitem "validate_ds()" setup = [Setup] begin
+    get_keys = d -> d[!, :id]
+    get_prop = (d, i) -> d[findfirst(d[!, :id] .== i), :work]
+
+     # Test with a valid DataFrame
+    @test RollupTree.validate_ds(wbs_tree, wbs_table, get_keys, get_prop) === true
+
+    # Test with mismatched keys
+    mismatched_keys_df = deepcopy(wbs_table)
+    mismatched_keys_df[1, :id] = "invalid"
+    @test_throws ErrorException RollupTree.validate_ds(wbs_tree, mismatched_keys_df, get_keys, get_prop)
+
+    # Test with invalid work value
+    invalid_value_df = deepcopy(wbs_table)
+    invalid_value_df[findfirst(invalid_value_df[!, :id] .== "1.1"), :work] = missing
+    @test_throws ErrorException RollupTree.validate_ds(wbs_tree, invalid_value_df, get_keys, get_prop)
+ end
+
 @testitem "validate_dag()" setup = [Setup] begin
     # Test with a valid DAG
     @test RollupTree.validate_dag(wbs_tree) === true
