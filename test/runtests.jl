@@ -16,7 +16,7 @@ using TestItems
         budget = [missing, missing, missing, missing, 25000, 61000, 37000, 9000, 62000, 21500]
     )
 
-    wbs_table_rollup = deepcopy(wbs_table)
+    wbs_table_rollup = copy(wbs_table)
     wbs_table_rollup[wbs_table[!, :id] .== "1", :work] .= 11.8 + 33.8
     wbs_table_rollup[wbs_table[!, :id] .== "2", :work] .= 18.2 + 5.8
     wbs_table_rollup[wbs_table[!, :id] .== "3", :work] .= 16.2 + 14.2
@@ -61,10 +61,10 @@ end
 end
 
 @testitem "update_rollup()" setup = [Setup] begin
-    input = deepcopy(wbs_table_rollup)
+    input = copy(wbs_table_rollup)
     input[findfirst(input[!, :id] .== "3.2"), :budget] = 22000
     input[findfirst(input[!, :id] .== "2.2"), :work] = missing
-    expected = deepcopy(wbs_table_rollup)
+    expected = copy(wbs_table_rollup)
     expected[findfirst(input[!, :id] .== "3.2"), :budget] = 22000
     expected[findfirst(input[!, :id] .== "2.2"), :work] = missing
     expected[findfirst(expected[!, :id] .== "3"), :budget] = 62000 + 22000
@@ -87,7 +87,7 @@ end
 end
 
 @testitem "update_prop()" setup = [Setup] begin
-    expected1 = deepcopy(wbs_table)
+    expected1 = copy(wbs_table)
     expected1[findfirst(expected1[!, :id] .== "1"), :work] = 11.8 + 33.8
     result1 = RollupTree.update_prop(
         wbs_table, "1", ["1.1", "1.2"],
@@ -98,7 +98,7 @@ end
     )
     @test isequal(result1, expected1)
 
-    expected2 = deepcopy(expected1)
+    expected2 = copy(expected1)
     expected2[findfirst(expected2[!, :id] .== "1"), [:work, :budget]] .= [11.8 + 33.8, 25000 + 61000]
     result2 = RollupTree.update_prop(
         wbs_table, "1", ["1.1", "1.2"],
@@ -149,7 +149,7 @@ end
 end
 
 @testitem "df_set_by_key() and df_set_by_id()" setup = [Setup] begin
-  expected = deepcopy(wbs_table)
+  expected = copy(wbs_table)
   expected[findfirst(expected[!, :id] .== "1.1"), :work] = 11.9
   expected[findfirst(expected[!, :id] .== "1.1"), :budget] = 25001
 
@@ -163,7 +163,7 @@ end
 end
 
 @testitem "update_df_prop_by_key() and update_df_prop_by_id()" setup = [Setup] begin
-    expected = deepcopy(wbs_table)
+    expected = copy(wbs_table)
     expected[findfirst(expected[!, :id] .== "1"), :work] = 11.8 + 33.8
     result1 = RollupTree.update_df_prop_by_key(wbs_table, :id, "1", ["1.1", "1.2"], :work)
     @test isequal(result1, expected)
@@ -180,12 +180,12 @@ end
     @test RollupTree.validate_ds(wbs_tree, wbs_table, get_keys, get_prop) === true
 
     # Test with mismatched keys
-    mismatched_keys_df = deepcopy(wbs_table)
+    mismatched_keys_df = copy(wbs_table)
     mismatched_keys_df[1, :id] = "invalid"
     @test_throws ErrorException RollupTree.validate_ds(wbs_tree, mismatched_keys_df, get_keys, get_prop)
 
     # Test with invalid work value
-    invalid_value_df = deepcopy(wbs_table)
+    invalid_value_df = copy(wbs_table)
     invalid_value_df[findfirst(invalid_value_df[!, :id] .== "1.1"), :work] = missing
     @test_throws ErrorException RollupTree.validate_ds(wbs_tree, invalid_value_df, get_keys, get_prop)
  end
@@ -202,13 +202,13 @@ end
     @test_throws ErrorException RollupTree.validate_dag(undirected_graph)
 
     # Test with a graph containing a directed cycle
-    cyclic_graph = deepcopy(wbs_tree)
+    cyclic_graph = copy(wbs_tree)
     cyclic_graph["1", "1.1"] = nothing
     cyclic_graph["1.1", "1.2"] = nothing
     @test_throws ErrorException RollupTree.validate_dag(cyclic_graph)
 
     # Test with a disconnected graph
-    disconnected_graph = deepcopy(wbs_tree)
+    disconnected_graph = copy(wbs_tree)
     add_vertex!(disconnected_graph, "isolated")
     # @test_throws ErrorException RollupTree.validate_dag(disconnected_graph)
 end
@@ -222,17 +222,17 @@ end
     @test_throws ErrorException RollupTree.validate_tree(undirected_graph)
 
     # Test with a graph containing an undirected cycle
-    cyclic_graph = deepcopy(wbs_tree)
+    cyclic_graph = copy(wbs_tree)
     cyclic_graph["1", "1.1"] = nothing
     @test_throws ErrorException RollupTree.validate_tree(cyclic_graph)
 
     # Test with a disconnected graph
-    disconnected_graph = deepcopy(wbs_tree)
+    disconnected_graph = copy(wbs_tree)
     add_vertex!(disconnected_graph, "isolated")
     @test_throws ErrorException RollupTree.validate_tree(disconnected_graph)
 
     # Test with a graph that has multiple roots
-    multi_root_graph = deepcopy(wbs_tree)
+    multi_root_graph = copy(wbs_tree)
     add_vertex!(multi_root_graph, "new_root")
     multi_root_graph["1.1", "new_root"] = nothing
     @test_throws ErrorException RollupTree.validate_tree(multi_root_graph)
