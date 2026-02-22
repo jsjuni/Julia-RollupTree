@@ -4,6 +4,14 @@ module RollupTree
     using Graphs
     using MetaGraphsNext
 
+    export rollup, update_rollup, validate_ds, validate_dag, validate_tree,
+            update_prop,
+            df_get_by_key, df_get_by_id, df_set_by_key, df_set_by_id,
+            df_get_keys, df_get_ids,
+            df_get_row_by_key, df_get_row_by_id,
+            df_set_row_by_key, df_set_row_by_id,
+            update_df_prop_by_key, update_df_prop_by_id
+
     rollup(tree, ds, update, validate_ds, validate_tree = validate_tree) = begin
         validate_tree(tree)
         validate_ds(tree, ds)
