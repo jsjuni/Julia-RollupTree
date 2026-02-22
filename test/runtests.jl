@@ -39,7 +39,7 @@ using TestItems
 end
 
 @testitem "rollup()" setup = [Setup] begin
-    result = RollupTree.rollup(
+    result = rollup(
         wbs_tree,
         wbs_table,
         (d, p, c) -> begin
@@ -71,7 +71,7 @@ end
     expected[findfirst(expected[!, :id] .== "2"), :work] = 18.2 + 5.8
     expected[findfirst(expected[!, :id] .== "top"), :budget] = 25000 + 61000 + 37000 + 9000 + 62000 + 22000
     expected[findfirst(expected[!, :id] .== "top"), :work] = 11.8 + 33.8 + 18.2 + 5.8 + 16.2 + 14.2
-    result = RollupTree.update_rollup(
+    result = update_rollup(
         wbs_tree, input, "3.2",
         (d, v, s) -> begin
             idx = findfirst(d[!, :id] .== v)
@@ -89,7 +89,7 @@ end
 @testitem "update_prop()" setup = [Setup] begin
     expected1 = copy(wbs_table)
     expected1[findfirst(expected1[!, :id] .== "1"), :work] = 11.8 + 33.8
-    result1 = RollupTree.update_prop(
+    result1 = update_prop(
         wbs_table, "1", ["1.1", "1.2"],
         (d, k, v) -> begin d[findfirst(d[!, :id] .== k), :work] = v; d end,
         (d, k) -> d[findfirst(d[!, :id] .== k), :work],
@@ -100,7 +100,7 @@ end
 
     expected2 = copy(expected1)
     expected2[findfirst(expected2[!, :id] .== "1"), [:work, :budget]] .= [11.8 + 33.8, 25000 + 61000]
-    result2 = RollupTree.update_prop(
+    result2 = update_prop(
         wbs_table, "1", ["1.1", "1.2"],
         (d, k, v) -> begin d[findfirst(d[!, :id] .== k), [:work, :budget]] = v; d end,
         (d, k) -> d[findfirst(d[!, :id] .== k), [:work, :budget]],
@@ -109,7 +109,7 @@ end
     )
     @test isequal(result2, expected2)
 
-    result3 = RollupTree.update_prop(
+    result3 = update_prop(
         wbs_table, "1.1", [],
         (d, k, v) -> begin d[findfirst(d[!, :id] .== k), :work] = v; d end,
         (d, k) -> d[findfirst(d[!, :id] .== k), :work],
@@ -121,30 +121,30 @@ end
 
 @testitem "df_get_keys() and df_get_ids()" setup = [Setup] begin
     expected = ["top", "1", "2", "3", "1.1", "1.2", "2.1", "2.2", "3.1", "3.2"]
-    @test isequal(RollupTree.df_get_keys(wbs_table, :id), expected)
-    @test isequal(RollupTree.df_get_ids(wbs_table), expected)
+    @test isequal(df_get_keys(wbs_table, :id), expected)
+    @test isequal(df_get_ids(wbs_table), expected)
 end
 
 @testitem "df_get_row_by_key() and df_get_row_by_id()" setup = [Setup] begin
     expected = (id = "1.1", pid = "1", name = "Electrical", work = 11.8, budget = 25000)
-    @test isequal(RollupTree.df_get_row_by_key(wbs_table, :id, "1.1"), expected)
-    @test isequal(RollupTree.df_get_row_by_id(wbs_table, "1.1"), expected)
+    @test isequal(df_get_row_by_key(wbs_table, :id, "1.1"), expected)
+    @test isequal(df_get_row_by_id(wbs_table, "1.1"), expected)
 end
 
 @testitem "df_get_by_key() and df_get_by_id()" setup = [Setup] begin
-  @test RollupTree.df_get_by_key(wbs_table, :id, "1.1", :work) == 11.8
-  @test RollupTree.df_get_by_key(wbs_table, :id, "1.1", :budget) == 25000
-  @test RollupTree.df_get_by_id(wbs_table, "1.1", :work) == 11.8
-  @test RollupTree.df_get_by_id(wbs_table, "1.1", :budget) == 25000
+  @test df_get_by_key(wbs_table, :id, "1.1", :work) == 11.8
+  @test df_get_by_key(wbs_table, :id, "1.1", :budget) == 25000
+  @test df_get_by_id(wbs_table, "1.1", :work) == 11.8
+  @test df_get_by_id(wbs_table, "1.1", :budget) == 25000
 end
 
 @testitem "df_set_row_by_key() and df_set_row_by_id()" setup = [Setup] begin
   expected = (id = "1.1", pid = "2", name = "Thermal", work = 11.9, budget = 25001)
   shuffled = expected[(:pid, :name, :id, :budget, :work)]
-  result1 = RollupTree.df_set_row_by_key(wbs_table, :id, "1.1", shuffled)
+  result1 = df_set_row_by_key(wbs_table, :id, "1.1", shuffled)
   @test isequal(result1[findfirst(result1[!, :id] .== "1.1"), :], expected)
 
-  result2 = RollupTree.df_set_row_by_id(wbs_table, "1.1", shuffled)
+  result2 = df_set_row_by_id(wbs_table, "1.1", shuffled)
   @test isequal(result2[findfirst(result2[!, :id] .== "1.1"), :], expected)
 end
 
@@ -153,22 +153,22 @@ end
   expected[findfirst(expected[!, :id] .== "1.1"), :work] = 11.9
   expected[findfirst(expected[!, :id] .== "1.1"), :budget] = 25001
 
-  result1 = RollupTree.df_set_by_key(wbs_table, :id, "1.1", :work, 11.9)
-  result2 = RollupTree.df_set_by_key(result1, :id, "1.1", :budget, 25001)
+  result1 = df_set_by_key(wbs_table, :id, "1.1", :work, 11.9)
+  result2 = df_set_by_key(result1, :id, "1.1", :budget, 25001)
   @test isequal(result2, expected)
 
-  result3 = RollupTree.df_set_by_id(wbs_table, "1.1", :work, 11.9)
-  result4 = RollupTree.df_set_by_id(result3, "1.1", :budget, 25001)
+  result3 = df_set_by_id(wbs_table, "1.1", :work, 11.9)
+  result4 = df_set_by_id(result3, "1.1", :budget, 25001)
   @test isequal(result4, expected)
 end
 
 @testitem "update_df_prop_by_key() and update_df_prop_by_id()" setup = [Setup] begin
     expected = copy(wbs_table)
     expected[findfirst(expected[!, :id] .== "1"), :work] = 11.8 + 33.8
-    result1 = RollupTree.update_df_prop_by_key(wbs_table, :id, "1", ["1.1", "1.2"], :work)
+    result1 = update_df_prop_by_key(wbs_table, :id, "1", ["1.1", "1.2"], :work)
     @test isequal(result1, expected)
 
-    result2 = RollupTree.update_df_prop_by_id(wbs_table, "1", ["1.1", "1.2"], :work)
+    result2 = update_df_prop_by_id(wbs_table, "1", ["1.1", "1.2"], :work)
     @test isequal(result2, expected)
 end
 
@@ -177,63 +177,63 @@ end
     get_prop = (d, i) -> d[findfirst(d[!, :id] .== i), :work]
 
      # Test with a valid DataFrame
-    @test RollupTree.validate_ds(wbs_tree, wbs_table, get_keys, get_prop) === true
+    @test validate_ds(wbs_tree, wbs_table, get_keys, get_prop) === true
 
     # Test with mismatched keys
     mismatched_keys_df = copy(wbs_table)
     mismatched_keys_df[1, :id] = "invalid"
-    @test_throws ErrorException RollupTree.validate_ds(wbs_tree, mismatched_keys_df, get_keys, get_prop)
+    @test_throws ErrorException validate_ds(wbs_tree, mismatched_keys_df, get_keys, get_prop)
 
     # Test with invalid work value
     invalid_value_df = copy(wbs_table)
     invalid_value_df[findfirst(invalid_value_df[!, :id] .== "1.1"), :work] = missing
-    @test_throws ErrorException RollupTree.validate_ds(wbs_tree, invalid_value_df, get_keys, get_prop)
+    @test_throws ErrorException validate_ds(wbs_tree, invalid_value_df, get_keys, get_prop)
  end
 
 @testitem "validate_dag()" setup = [Setup] begin
     # Test with a valid DAG
-    @test RollupTree.validate_dag(wbs_tree) === true
+    @test validate_dag(wbs_tree) === true
 
     # Test with an undirected graph
     undirected_graph = Graphs.SimpleGraph(nv(wbs_tree))
     for e in edges(wbs_tree)
         add_edge!(undirected_graph, src(e), dst(e))
     end
-    @test_throws ErrorException RollupTree.validate_dag(undirected_graph)
+    @test_throws ErrorException validate_dag(undirected_graph)
 
     # Test with a graph containing a directed cycle
     cyclic_graph = copy(wbs_tree)
     cyclic_graph["1", "1.1"] = nothing
     cyclic_graph["1.1", "1.2"] = nothing
-    @test_throws ErrorException RollupTree.validate_dag(cyclic_graph)
+    @test_throws ErrorException validate_dag(cyclic_graph)
 
     # Test with a disconnected graph
     disconnected_graph = copy(wbs_tree)
     add_vertex!(disconnected_graph, "isolated")
-    # @test_throws ErrorException RollupTree.validate_dag(disconnected_graph)
+    # @test_throws ErrorException validate_dag(disconnected_graph)
 end
 
 @testitem "validate_tree()" setup = [Setup] begin
     # Test with a valid tree
-    @test RollupTree.validate_tree(wbs_tree) === true
+    @test validate_tree(wbs_tree) === true
 
     # Test with a non-directed graph
     undirected_graph = Graphs.SimpleGraph(nv(wbs_tree))
-    @test_throws ErrorException RollupTree.validate_tree(undirected_graph)
+    @test_throws ErrorException validate_tree(undirected_graph)
 
     # Test with a graph containing an undirected cycle
     cyclic_graph = copy(wbs_tree)
     cyclic_graph["1", "1.1"] = nothing
-    @test_throws ErrorException RollupTree.validate_tree(cyclic_graph)
+    @test_throws ErrorException validate_tree(cyclic_graph)
 
     # Test with a disconnected graph
     disconnected_graph = copy(wbs_tree)
     add_vertex!(disconnected_graph, "isolated")
-    @test_throws ErrorException RollupTree.validate_tree(disconnected_graph)
+    @test_throws ErrorException validate_tree(disconnected_graph)
 
     # Test with a graph that has multiple roots
     multi_root_graph = copy(wbs_tree)
     add_vertex!(multi_root_graph, "new_root")
     multi_root_graph["1.1", "new_root"] = nothing
-    @test_throws ErrorException RollupTree.validate_tree(multi_root_graph)
+    @test_throws ErrorException validate_tree(multi_root_graph)
 end
