@@ -92,9 +92,7 @@ end
     result1 = update_prop(
         wbs_table, "1", ["1.1", "1.2"],
         (d, k, v) -> begin d[findfirst(d[!, :id] .== k), :work] = v; d end,
-        (d, k) -> d[findfirst(d[!, :id] .== k), :work],
-        (av) -> reduce(+, av),
-        (ds, target, v) -> v
+        (d, k) -> d[findfirst(d[!, :id] .== k), :work]
     )
     @test isequal(result1, expected1)
 
@@ -104,8 +102,8 @@ end
         wbs_table, "1", ["1.1", "1.2"],
         (d, k, v) -> begin d[findfirst(d[!, :id] .== k), [:work, :budget]] = v; d end,
         (d, k) -> d[findfirst(d[!, :id] .== k), [:work, :budget]],
-        (av) -> mapreduce(x -> Vector(x), +, av),
-        (ds, target, v) -> v
+        combine = (av) -> mapreduce(x -> Vector(x), +, av),
+        override = (ds, target, v) -> v
     )
     @test isequal(result2, expected2)
 
@@ -113,8 +111,8 @@ end
         wbs_table, "1.1", [],
         (d, k, v) -> begin d[findfirst(d[!, :id] .== k), :work] = v; d end,
         (d, k) -> d[findfirst(d[!, :id] .== k), :work],
-        (av) -> reduce(+, av),
-        (ds, target, v) -> v
+        combine = (av) -> sum(av),
+        override = (ds, target, v) -> v
     )
     @test isequal(result3, wbs_table)
 end

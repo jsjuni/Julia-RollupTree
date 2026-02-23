@@ -82,7 +82,7 @@ module RollupTree
         return true
     end
 
-    update_prop(ds, target, sources, set, get, combine = (av) -> reduce(+, av), override = (ds, target, v) -> v) = begin
+    update_prop(ds, target, sources, set, get; combine = sum, override = (ds, target, v) -> v) = begin
         if length(sources) > 0
             av = map(s -> get(ds, s), sources)
             return set(ds, target, override(ds, target, combine(av)))
@@ -141,12 +141,13 @@ module RollupTree
     
     df_set_row_by_id(df, idval, new_row) = df_set_row_by_key(df, :id, idval, new_row)
 
-    update_df_prop_by_key(df, key, target, sources, prop, combine = av -> reduce(+, av), override = (ds, target, v) -> v) = begin
-        update_prop(df, target, sources, (d, k, v) -> df_set_by_key(d, key, k, prop, v), (d, k) -> df_get_by_key(d, key, k, prop), combine, override)
+    update_df_prop_by_key(df, key, target, sources, prop; combine = sum, override = (ds, target, v) -> v) = begin
+        update_prop(df, target, sources, (d, k, v) -> df_set_by_key(d, key, k, prop, v), (d, k) -> df_get_by_key(d, key, k, prop),
+            combine = combine, override = override)
     end
 
-    update_df_prop_by_id(df, target, sources, prop, combine = av -> reduce(+, av), override = (ds, target, v) -> v) = begin
-        update_df_prop_by_key(df, :id, target, sources, prop, combine, override)
+    update_df_prop_by_id(df, target, sources, prop; combine = sum, override = (ds, target, v) -> v) = begin
+        update_df_prop_by_key(df, :id, target, sources, prop, combine = combine, override = override)
     end
     
 end
