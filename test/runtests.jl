@@ -193,7 +193,7 @@ end
     @test validate_dag(wbs_tree) === true
 
     # Test with an undirected graph
-    undirected_graph = Graphs.SimpleGraph(nv(wbs_tree))
+    undirected_graph = MetaGraphsNext.MetaGraph(Graphs.SimpleGraph(), label_type = String)
     for e in edges(wbs_tree)
         add_edge!(undirected_graph, src(e), dst(e))
     end
@@ -216,7 +216,10 @@ end
     @test validate_tree(wbs_tree) === true
 
     # Test with a non-directed graph
-    undirected_graph = Graphs.SimpleGraph(nv(wbs_tree))
+    undirected_graph = MetaGraphsNext.MetaGraph(Graphs.SimpleGraph(), label_type = String)
+    for e in edges(wbs_tree)
+        add_edge!(undirected_graph, src(e), dst(e))
+    end
     @test_throws ErrorException validate_tree(undirected_graph)
 
     # Test with a graph containing an undirected cycle
