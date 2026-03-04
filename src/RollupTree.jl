@@ -15,11 +15,13 @@ module RollupTree
     function rollup(tree::MetaGraphsNext.MetaGraph, ds, update, validate_ds, validate_tree = validate_tree)
         validate_tree(tree)
         validate_ds(tree, ds)
-        foldl(
+        mapfoldl(
+            v -> label_for(tree, v), 
             (s, v) -> update(s, v, inneighbor_labels(tree, v)),
-            map(v -> label_for(tree, v), topological_sort(tree)),
+            topological_sort(tree);
             init = ds
         )
+      
     end
 
     function update_rollup(tree::MetaGraphsNext.MetaGraph, ds, vertex, update)
@@ -37,7 +39,7 @@ module RollupTree
         end
         foldl(
             (s, v) -> update(s, v, inneighbor_labels(tree, v)),
-            vertices_above,
+            vertices_above;
             init = ds
         )
     end
@@ -82,12 +84,12 @@ module RollupTree
         return true
     end
 
-    function update_prop(ds, target, sources, set, get; combine = sum, override = (ds, target, v) -> v)
+    function update_prop(data_set, target, sources, set, get; combine = sum, override = (ds, target, v) -> v)
         if length(sources) > 0
-            av = map(s -> get(ds, s), sources)
-            return set(ds, target, override(ds, target, combine(av)))
+            values = map(source -> get(data_set, source), sources)
+            return set(data_set, target, override(data_set, target, combine(values)))
         else
-            return ds
+            return data_set
         end
     end
 
