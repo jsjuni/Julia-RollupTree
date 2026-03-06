@@ -116,7 +116,9 @@ module RollupTree
         return df[row_idx, prop]
     end
 
-    df_get_by_id(df, idval, prop) = df_get_by_key(df, :id, idval, prop)
+    function df_get_by_id(df, idval, prop)
+        df_get_by_key(df, :id, idval, prop)
+    end
 
     function df_set_by_key(df, key, keyval, prop, value)
         row_idx = findfirst(df[!, key] .== keyval)
@@ -128,11 +130,17 @@ module RollupTree
         return new_df
     end
 
-    df_set_by_id(df, idval, prop, value) = df_set_by_key(df, :id, idval, prop, value)
+    function df_set_by_id(df, idval, prop, value)
+        df_set_by_key(df, :id, idval, prop, value)
+    end
 
-    df_get_keys(df, key) = df[!, key]
+    function df_get_keys(df, key)
+        df[!, key]
+    end
 
-    df_get_ids(df) = df_get_keys(df, :id)
+    function df_get_ids(df)
+        df_get_keys(df, :id)
+    end
 
     function df_get_row_by_key(df, key, keyval)
         row_idx = findfirst(df[!, key] .== keyval)
@@ -142,7 +150,9 @@ module RollupTree
         return df[row_idx, :]
     end
 
-    df_get_row_by_id(df, idval) = df_get_row_by_key(df, :id, idval)
+    function df_get_row_by_id(df, idval)
+        df_get_row_by_key(df, :id, idval)
+    end
 
     function df_set_row_by_key(df, key, keyval, new_row)
         row_idx = findfirst(df[!, key] .== keyval)
@@ -156,7 +166,9 @@ module RollupTree
         return new_df
     end
     
-    df_set_row_by_id(df, idval, new_row) = df_set_row_by_key(df, :id, idval, new_row)
+    function df_set_row_by_id(df, idval, new_row)
+        df_set_row_by_key(df, :id, idval, new_row)
+    end
 
     function update_df_prop_by_key(df, key, target, sources, prop; combine = sum, override = (ds, target, v) -> v)
         update_prop(df, target, sources, (d, k, v) -> df_set_by_key(d, key, k, prop, v),
