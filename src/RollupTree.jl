@@ -12,33 +12,48 @@ module RollupTree
             df_set_row_by_key, df_set_row_by_id,
             update_df_prop_by_key, update_df_prop_by_id
 
+    macro child_labels_of(tree, parent)
+        :( inneighbor_labels($(esc(tree)), $(esc(parent))) )
+    end
+
+    macro parent_labels_of(tree, child)
+        :( outneighbor_labels($(esc(tree)), $(esc(child))) )    
+    end
+
+    macro n_children(tree, vertex)
+        :( indegree($(esc(tree)), code_for($(esc(tree)), $(esc(vertex)))) )
+    end
+
+    macro is_leaf(tree, vertex)
+        :( @n_children($(esc(tree)), $(esc(vertex))) == 0 )
+    end
+    
     function rollup(tree::MetaGraphsNext.MetaGraph, ds, update, validate_ds, validate_tree = validate_tree)
         validate_tree(tree)
         validate_ds(tree, ds)
         mapfoldl(
-            v -> label_for(tree, v), 
-            (s, v) -> update(s, v, inneighbor_labels(tree, v)),
-            topological_sort(tree);
-            init = ds
+            v -> label_for(tree, v),                             # (3) map vertices to their IDs
+            (s, v) -> update(s, v, @child_labels_of(tree, v)),   # (4) apply dataset updates
+            topological_sort(tree);                              # (2) get vertices in depth-first order
+            init = ds                                            # (1) start with the original dataset
         )
-      
     end
 
     function update_rollup(tree::MetaGraphsNext.MetaGraph, ds, vertex, update)
-        if outdegree(tree, code_for(tree, vertex)) == 0
+        if !@is_leaf(tree, vertex)
             error("update_rollup should only be called on leaf vertices.")
         end
         todo = [vertex]
         vertices_above = []
         while length(todo) > 0
             v = pop!(todo)
-            for p in outneighbor_labels(tree, v)
+            for p in @parent_labels_of(tree, v)
                 push!(vertices_above, p)
                 push!(todo, p)
             end
         end
         foldl(
-            (s, v) -> update(s, v, inneighbor_labels(tree, v)),
+            (s, v) -> update(s, v, @child_labels_of(tree, v)),
             vertices_above;
             init = ds
         )
@@ -63,7 +78,7 @@ module RollupTree
         if !is_directed(graph)
             error("The provided graph is not directed.")
         end
-        if Graphs.is_cyclic(graph)
+        if is_cyclic(graph)
             error("The provided graph contains a directed cycle.")
         end
         return true
@@ -71,10 +86,10 @@ module RollupTree
 
     function validate_tree(graph::MetaGraphsNext.MetaGraph)
         validate_dag(graph)
-        if !Graphs.is_connected(graph)
+        if !is_connected(graph)
             error("The provided graph is not connected.")
         end
-        if Graphs.is_cyclic(SimpleGraph(graph))
+        if is_cyclic(SimpleGraph(graph))
             error("The provided graph contains a cycle.")
         end
         nroots = sum(v -> outdegree(graph, v) == 0, vertices(graph))
