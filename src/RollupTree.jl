@@ -12,48 +12,56 @@ module RollupTree
             df_set_row_by_key, df_set_row_by_id,
             update_df_prop_by_key, update_df_prop_by_id
 
-    macro child_labels_of(tree, parent)
+    macro predecessor_labels_of(tree, parent)
         :( inneighbor_labels($(esc(tree)), $(esc(parent))) )
     end
 
-    macro parent_labels_of(tree, child)
+    macro successor_labels_of(tree, child)
         :( outneighbor_labels($(esc(tree)), $(esc(child))) )    
     end
 
-    macro n_children(tree, vertex)
+    macro n_predecessors(tree, vertex)
         :( indegree($(esc(tree)), code_for($(esc(tree)), $(esc(vertex)))) )
     end
 
-    macro is_leaf(tree, vertex)
-        :( @n_children($(esc(tree)), $(esc(vertex))) == 0 )
+    macro has_predecessors(tree, vertex)
+        :( @n_predecessors($(esc(tree)), $(esc(vertex))) > 0 )
     end
     
-    function rollup(tree::MetaGraphsNext.MetaGraph, ds, update, validate_ds, validate_tree = validate_tree)
+     macro n_successors(tree, vertex)
+        :( outdegree($(esc(tree)), code_for($(esc(tree)), $(esc(vertex)))) )
+    end
+
+    macro has_successors(tree, vertex)
+        :( @n_successors($(esc(tree)), $(esc(vertex))) > 0 )
+    end
+    
+    function rollup(tree::MetaGraphsNext.MetaGraph, ds, update, validate_ds; validate_tree = validate_tree)
         validate_tree(tree)
         validate_ds(tree, ds)
         mapfoldl(
-            v -> label_for(tree, v),                             # (3) map vertices to their IDs
-            (s, v) -> update(s, v, @child_labels_of(tree, v)),   # (4) apply dataset updates
-            topological_sort(tree);                              # (2) get vertices in depth-first order
-            init = ds                                            # (1) start with the original dataset
-        )
+            v -> label_for(tree, v),                                     # (3) map vertices to their IDs
+            (s, vl) -> update(s, vl, @predecessor_labels_of(tree, vl)),  # (4) apply dataset updates
+            topological_sort(tree);                                      # (2) get vertices in precedence order
+            init = ds                                                    # (1) start with the original dataset
+        )                                                                # (5) return the updated dataset
     end
 
     function update_rollup(tree::MetaGraphsNext.MetaGraph, ds, vertex, update)
-        if !@is_leaf(tree, vertex)
-            error("update_rollup should only be called on leaf vertices.")
+        if @has_predecessors(tree, vertex)
+            error("Vertex $vertex has predecessors. update_rollup can only be applied to vertices with no predecessors.")
         end
         todo = [vertex]
         vertices_above = []
         while length(todo) > 0
             v = pop!(todo)
-            for p in @parent_labels_of(tree, v)
+            for p in @successor_labels_of(tree, v)
                 push!(vertices_above, p)
                 push!(todo, p)
             end
         end
         foldl(
-            (s, v) -> update(s, v, @child_labels_of(tree, v)),
+            (s, v) -> update(s, v, @predecessor_labels_of(tree, v)),
             vertices_above;
             init = ds
         )
@@ -65,13 +73,13 @@ module RollupTree
         if ids_in_tree != ids_in_ds
             error("The set of IDs in the DataFrame does not match the set of vertex labels in the graph.")
         end
-        for id in filter(id -> indegree(tree, code_for(tree, id)) == 0, ids_in_tree)
+        for id in filter(id -> !@has_predecessors(tree, id), ids_in_tree)
             value = get_prop(ds, id)
             if !op(value)
                 error("Invalid value for ID $id: $value")
             end
         end
-        return true
+        true
     end
 
     function validate_dag(graph::MetaGraphsNext.MetaGraph)
@@ -81,7 +89,7 @@ module RollupTree
         if is_cyclic(graph)
             error("The provided graph contains a directed cycle.")
         end
-        return true
+        true
     end
 
     function validate_tree(graph::MetaGraphsNext.MetaGraph)
@@ -92,28 +100,30 @@ module RollupTree
         if is_cyclic(SimpleGraph(graph))
             error("The provided graph contains a cycle.")
         end
-        nroots = sum(v -> outdegree(graph, v) == 0, vertices(graph))
+        nroots = sum(v -> !@has_successors(graph, v), labels(graph))
         if nroots != 1
-            error("The provided graph must have exactly one root (vertex with outdegree 0). Found $nroots.")
+            error("The provided graph must have exactly one root with no successor. Found $nroots.")
         end
-        return true
+        true
     end
 
-    function update_prop(data_set, target, sources, set, get; combine = sum, override = (ds, target, v) -> v)
-        if length(sources) > 0
-            values = map(source -> get(data_set, source), sources)
-            return set(data_set, target, override(data_set, target, combine(values)))
+    function update_prop(data_set, target, predecessors, set, get; combine = sum,
+            override = (ds, target, v) -> v,
+            initialize = (ds, target) -> ds)
+        if length(predecessors) > 0
+            values = map(source -> get(data_set, source), predecessors)
+            set(data_set, target, override(data_set, target, combine(values)))
         else
-            return data_set
+            initialize(data_set, target)
         end
     end
 
     function df_get_by_key(df, key, keyval, prop)
         row_idx = findfirst(df[!, key] .== keyval)
         if isnothing(row_idx)
-            error("Key value not found in DataFrame")
+            error("Key value $keyval not found in DataFrame")
         end
-        return df[row_idx, prop]
+        df[row_idx, prop]
     end
 
     function df_get_by_id(df, idval, prop)
@@ -123,11 +133,11 @@ module RollupTree
     function df_set_by_key(df, key, keyval, prop, value)
         row_idx = findfirst(df[!, key] .== keyval)
         if isnothing(row_idx)
-            error("Key value not found in DataFrame")
+            error("Key value $keyval not found in DataFrame")
         end
         new_df = copy(df)
         new_df[row_idx, prop] = value
-        return new_df
+        new_df
     end
 
     function df_set_by_id(df, idval, prop, value)
@@ -145,9 +155,9 @@ module RollupTree
     function df_get_row_by_key(df, key, keyval)
         row_idx = findfirst(df[!, key] .== keyval)
         if isnothing(row_idx)
-            error("Key value not found in DataFrame")
+            error("Key value $keyval not found in DataFrame")
         end
-        return df[row_idx, :]
+        df[row_idx, :]
     end
 
     function df_get_row_by_id(df, idval)
@@ -157,27 +167,27 @@ module RollupTree
     function df_set_row_by_key(df, key, keyval, new_row)
         row_idx = findfirst(df[!, key] .== keyval)
         if isnothing(row_idx)
-            error("Key value not found in DataFrame")
+            error("Key value $keyval not found in DataFrame")
         end
         new_df = copy(df)
         for k in keys(new_row)
             new_df[row_idx, k] = new_row[k]
         end
-        return new_df
+        new_df
     end
     
     function df_set_row_by_id(df, idval, new_row)
         df_set_row_by_key(df, :id, idval, new_row)
     end
 
-    function update_df_prop_by_key(df, key, target, sources, prop; combine = sum, override = (ds, target, v) -> v)
-        update_prop(df, target, sources, (d, k, v) -> df_set_by_key(d, key, k, prop, v),
+    function update_df_prop_by_key(df, key, target, predecessors, prop; combine = sum, override = (ds, target, v) -> v)
+        update_prop(df, target, predecessors, (d, k, v) -> df_set_by_key(d, key, k, prop, v),
             (d, k) -> df_get_by_key(d, key, k, prop),
             combine = combine, override = override)
     end
 
-    function update_df_prop_by_id(df, target, sources, prop; combine = sum, override = (ds, target, v) -> v)
-        update_df_prop_by_key(df, :id, target, sources, prop, combine = combine, override = override)
+    function update_df_prop_by_id(df, target, predecessors, prop; combine = sum, override = (ds, target, v) -> v)
+        update_df_prop_by_key(df, :id, target, predecessors, prop, combine = combine, override = override)
     end
     
 end
