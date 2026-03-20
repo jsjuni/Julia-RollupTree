@@ -12,68 +12,68 @@ module RollupTree
             df_set_row_by_key, df_set_row_by_id,
             update_df_prop_by_key, update_df_prop_by_id
 
-    macro predecessor_labels_of(tree, parent)
-        :( inneighbor_labels($(esc(tree)), $(esc(parent))) )
+    macro predecessor_labels_of(graph, label)
+        :( inneighbor_labels($(esc(graph)), $(esc(label))) )
     end
 
-    macro successor_labels_of(tree, child)
-        :( outneighbor_labels($(esc(tree)), $(esc(child))) )    
+    macro successor_labels_of(graph, label)
+        :( outneighbor_labels($(esc(graph)), $(esc(label))) )    
     end
 
-    macro n_predecessors(tree, vertex)
-        :( indegree($(esc(tree)), code_for($(esc(tree)), $(esc(vertex)))) )
+    macro n_predecessors(graph, label)
+        :( indegree($(esc(graph)), code_for($(esc(graph)), $(esc(label)))) )
     end
 
-    macro has_predecessors(tree, vertex)
-        :( @n_predecessors($(esc(tree)), $(esc(vertex))) > 0 )
+    macro has_predecessors(graph, label)
+        :( @n_predecessors($(esc(graph)), $(esc(label))) > 0 )
+    end
+
+    macro n_successors(graph, label)
+        :( outdegree($(esc(graph)), code_for($(esc(graph)), $(esc(label)))) )
+    end
+
+    macro has_successors(graph, label)
+        :( @n_successors($(esc(graph)), $(esc(label))) > 0 )
     end
     
-     macro n_successors(tree, vertex)
-        :( outdegree($(esc(tree)), code_for($(esc(tree)), $(esc(vertex)))) )
-    end
-
-    macro has_successors(tree, vertex)
-        :( @n_successors($(esc(tree)), $(esc(vertex))) > 0 )
-    end
-    
-    function rollup(tree::MetaGraphsNext.MetaGraph, ds, update, validate_ds; validate_tree = validate_tree)
-        validate_tree(tree)
-        validate_ds(tree, ds)
+    function rollup(graph::MetaGraphsNext.MetaGraph, ds, update, validate_ds; validate_graph = validate_tree)
+        validate_graph(graph)
+        validate_ds(graph, ds)
         mapfoldl(
-            v -> label_for(tree, v),                                     # (3) map vertices to their IDs
-            (s, vl) -> update(s, vl, @predecessor_labels_of(tree, vl)),  # (4) apply dataset updates
-            topological_sort(tree);                                      # (2) get vertices in precedence order
-            init = ds                                                    # (1) start with the original dataset
-        )                                                                # (5) return the updated dataset
+            v -> label_for(graph, v),                                     # (3) map vertices to their IDs
+            (s, vl) -> update(s, vl, @predecessor_labels_of(graph, vl)),  # (4) apply successive dataset updates
+            topological_sort(graph);                                      # (2) iterate vertices in precedence order
+            init = ds                                                     # (1) start with the original dataset
+        )                                                                 # (5) return the updated dataset
     end
 
-    function update_rollup(tree::MetaGraphsNext.MetaGraph, ds, vertex, update)
-        if @has_predecessors(tree, vertex)
+    function update_rollup(graph::MetaGraphsNext.MetaGraph, ds, vertex, update)
+        if @has_predecessors(graph, vertex)
             error("Vertex $vertex has predecessors. update_rollup can only be applied to vertices with no predecessors.")
         end
         todo = [vertex]
         vertices_above = []
         while length(todo) > 0
             v = pop!(todo)
-            for p in @successor_labels_of(tree, v)
+            for p in @successor_labels_of(graph, v)
                 push!(vertices_above, p)
                 push!(todo, p)
             end
         end
         foldl(
-            (s, v) -> update(s, v, @predecessor_labels_of(tree, v)),
+            (s, v) -> update(s, v, @predecessor_labels_of(graph, v)),
             vertices_above;
             init = ds
         )
     end
 
-    function validate_ds(tree::MetaGraphsNext.MetaGraph, ds, get_keys, get_prop, op = x -> isa(x, Number))
-        ids_in_tree = Set(labels(tree))
+    function validate_ds(graph::MetaGraphsNext.MetaGraph, ds, get_keys, get_prop, op = x -> isa(x, Number))
+        ids_in_tree = Set(labels(graph))
         ids_in_ds = Set(get_keys(ds))
         if ids_in_tree != ids_in_ds
             error("The set of IDs in the DataFrame does not match the set of vertex labels in the graph.")
         end
-        for id in filter(id -> !@has_predecessors(tree, id), ids_in_tree)
+        for id in filter(id -> !@has_predecessors(graph, id), ids_in_tree)
             value = get_prop(ds, id)
             if !op(value)
                 error("Invalid value for ID $id: $value")
@@ -107,14 +107,14 @@ module RollupTree
         true
     end
 
-    function update_prop(data_set, target, predecessors, set, get; combine = sum,
+    function update_prop(ds, target, predecessors, set, get; combine = sum,
             override = (ds, target, v) -> v,
             initialize = (ds, target) -> ds)
         if length(predecessors) > 0
-            values = map(source -> get(data_set, source), predecessors)
-            set(data_set, target, override(data_set, target, combine(values)))
+            value = combine(map(p -> get(ds, p), predecessors))     # combine propety values from predecessors
+            set(ds, target, override(ds, target, value))            # set target property to combined value, with optional override
         else
-            initialize(data_set, target)
+            initialize(ds, target)                                  # optionally initialize leaf vertex property
         end
     end
 
