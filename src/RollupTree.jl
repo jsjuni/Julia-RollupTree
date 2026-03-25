@@ -42,7 +42,7 @@ module RollupTree
         mapfoldl(
             v -> label_for(graph, v),                                     # (3) map vertices to their IDs
             (s, vl) -> update(s, vl, @predecessor_labels_of(graph, vl)),  # (4) apply successive dataset updates
-            topological_sort(graph);                                      # (2) iterate vertices in precedence order
+            topological_sort(graph),                                      # (2) iterate vertices in precedence order
             init = ds                                                     # (1) start with the original dataset
         )                                                                 # (5) return the updated dataset
     end
