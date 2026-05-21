@@ -2,5 +2,6 @@
 
 [![Build Status](https://github.com/jsjuni/RollupTree.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/jsjuni/RollupTree.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-RollupTree.jl is an expermental Julia port of the R package [rollupTree](https://github.com/jsjuni/rollupTree).
+RollupTree.jl is an experimental Julia port of the R package [rollupTree](https://github.com/jsjuni/rollupTree).
 
+ Mass rollup for a Bill of Materials is an example of a class of computations in which elements are arranged in a tree structure and some property of each element is a computed function of the corresponding values of its child elements. Leaf elements, i.e., those with no children, have values assigned. In many cases, the combining function is simple arithmetic sum; in other cases (e.g., mass properties), the combiner may involve other information such as the geometric relationship between parent and child, or statistical relations such as root-sum-of-squares (RSS). This package implements a general function for such problems. It is adapted to specific recursive computations by functional programming techniques; the caller passes a function as the update parameter to rollup() (or, at a lower level, passes functions as the get, set, combine, and override parameters to update_prop()) at runtime to specify the desired operations.
