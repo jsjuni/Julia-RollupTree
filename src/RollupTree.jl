@@ -13,6 +13,13 @@ module RollupTree
             df_set_row_by_key, df_set_row_by_id,
             update_df_prop_by_key, update_df_prop_by_id
 
+    #=
+        Macros for mnemonic graph operations using vertex labels.
+
+        It is convenient for edges in the graph to flow from predecessors to successors. In that configuration, the traversal order is a simple topological sort.
+        These macros enforce that convention by using the predecessor/successor terminology.
+    =#
+    
     "Get labels of the predecessors of the vertex with the given label in the graph."
     macro predecessor_labels_of(graph, label)
         :( inneighbor_labels($(esc(graph)), $(esc(label))) )
